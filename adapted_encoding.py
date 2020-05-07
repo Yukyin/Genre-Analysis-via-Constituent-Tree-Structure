@@ -228,9 +228,12 @@ for i in range(0, 25):
                 
                 no_internal_labels = without_internal_labels(parsed_sent)
                 height = get_height(parsed_sent)
-                #productions = parsed_sent.productions()
+                productions_list = get_productions(parsed_sent)
+                productions_str = " | ".join(productions_list)
                 #left, right = get_tilt(parsed_sent)
-                #subtrees = parsed_sent.subtrees()
+                #subtrees_list = parsed_sent.subtrees()
+                #subtrees_str = " | ".join(subtrees_list)
+                
                 """
                 feature_dict['without_internal_labels'] = no_internal_labels
                 feature_dict['height'] = height
@@ -241,11 +244,12 @@ for i in range(0, 25):
                 
                 #yes_internal_labels = with_internal_labels(parsed_sent)
                 
-                feature_set += [({'without_internal_labels': no_internal_labels, 'height': height}, genre)]
+                feature_set += [({'without_internal_labels': no_internal_labels, 'height': height, 'productions': productions_str}, genre)]
                 #feature_set += [(feature_dict, genre)]
                 
-        except:
+        except Exception as e:
             print("Error adding ", file_name, " to feature vector")
+            print(e)
 
 print("WSJ corpus loaded successfully.")
 print("Adding Brown corpus to feature set...")
@@ -290,11 +294,16 @@ for i in range(len(brown_subdirs)):
                 parsed_sent = ptb.parsed_sents(file_name)[x]
                 no_internal_labels = without_internal_labels(parsed_sent)
                 height = get_height(parsed_sent)
+                productions_list = get_productions(parsed_sent)
+                productions_str = " | ".join(productions_list)
+                #left, right = get_tilt(parsed_sent)
+                #subtrees_list = parsed_sent.subtrees()
+                #subtrees_str = " | ".join(subtrees_list)
                 #yes_internal_labels = with_internal_labels(parsed_sent)
+        
                 
-                feature_set += [({'without_internal_labels': no_internal_labels, 'height': height}, genre)]
-                #print("Encoding Created for ", file_name )
-                #print()
+                feature_set += [({'without_internal_labels': no_internal_labels, 'height': height, 'productions': productions_str}, genre)]
+                #feature_set += [({'without_internal_labels': no_internal_labels, 'height': height}, genre)]
                 
                 # new way with more features
                 """
@@ -320,8 +329,10 @@ for i in range(len(brown_subdirs)):
                 feature_set += [(feature_dict, genre)]
                 """
                 
-        except:
-            print("Error encoding without internal nodes")
+        except Exception as e:
+            print("Error adding ", file_name, " to feature vector")
+            print(e)
+
 
 print("Brown corpus loaded successfully.")
 
