@@ -8,44 +8,14 @@ Created on Fri Apr 24 13:57:38 2020
 import nltk
 from nltk.tree import Tree
 from nltk.corpus import treebank
-from nltk.corpus import ptb, brown
+from nltk.corpus import ptb
 from typing import Tuple, List
 import os, random
 from nltk.classify import apply_features
-from nltk.classify.scikitlearn import SklearnClassifier
-from sklearn.naive_bayes import MultinomialNB, BernoulliNB
-from sklearn.linear_model import LogisticRegression, SGDClassifier
+#from nltk.classify.scikitlearn import SklearnClassifier
+#from sklearn.naive_bayes import MultinomialNB, BernoulliNB
+#from sklearn.linear_model import LogisticRegression, SGDClassifier
 
-# The Penn Treebank Corpus:
-fileids = treebank.fileids()
-words = treebank.words('wsj_0003.mrg')  # ends with ...
-tagged_words = treebank.tagged_words('wsj_0003.mrg')
-parsed_sents = treebank.parsed_sents('wsj_0003.mrg')[6]
-productions = parsed_sents.productions()
-
-"""
-print("File IDs", fileids)
-print("Words", words)
-print("Tagged", tagged_words)   #[('A', 'DT'), ('form', 'NN'), ('of', 'IN'), ...]
-"""
-
-#print(parsed_sents)
-"""
-for node in parsed_sents.subtrees():
-    print(node, end=" ")
-    print("\t", len(node))
-    print("--------------------")
-"""
- 
-"""
-print(type(tagged_words))
-print(ptb.fileids())
-print(ptb.tagged_words('WSJ/00/WSJ_0003.MRG'))
-# issue with allcats.txt -- use the one in nltk_data
-# /Users/morischick/nltk_data/corpora/ptb/WSJ <-- where NLTK is accessing it successfuly
-"""
-
-#print(parsed_sents.pos())
 
 def with_internal_labels(parsed_sents):
     """
@@ -83,6 +53,55 @@ def without_internal_labels(parsed_sents):
             encoding += "0 "
     return encoding
 
+def get_productionsOLD(parsed_sent):
+    d = {}
+    for p in parsed_sent.productions():
+        right_side = p.rhs()
+        # if a production leads to more than 1 node, it must not be a terminal
+        # if a production has 1 node it must be a terminal
+        # we will only include non-terminal productions
+        if len(right_side) > 1:
+            #print(right_side, len(right_side))
+            #parts = str(p).split('->')
+            #print(parts)
+            if str(p) in d:
+                d[str(p)] += 1
+            else:
+                d[str(p)] = 1
+    productions = ", ".join(d)
+    return productions
+
+def get_productions(parsed_sent):
+    d = {}
+    for p in parsed_sent.productions():
+        right_side = p.rhs()
+        # if a production leads to more than 1 node, it must not be a terminal
+        # if a production has 1 node it must be a terminal
+        # we will only include non-terminal productions
+        if len(right_side) > 1:
+            #print(right_side, len(right_side))
+            #parts = str(p).split('->')
+            #print(parts)
+            if str(p) in d:
+                d[str(p)] += 1
+            else:
+                d[str(p)] = 1
+    for key in d.keys():
+        feature_dict[key] = d[key]
+
+def get_sentence_length(parsed_sent):
+    return len(parsed_sent.leaves())
+
+def get_subtrees(parsed_sent):
+    subtree_dict = {}
+    for tree in parsed_sent.subtrees():
+        encoding = without_internal_labels(tree)
+        if encoding in subtree_dict:
+            subtree_dict[encoding] += 1
+        else:
+            subtree_dict[encoding] = 1
+    for key in subtree_dict.keys():
+        feature_dict[key] = subtree_dict[key]
 
 #with_internal_labels(parsed_sents)
 #without_internal_labels(parsed_sents)
@@ -119,8 +138,6 @@ def get_tree_structure_and_labels(tree) -> Tuple[List[int], List[str]]:
     structure = [x for x in a if isinstance(x, int)]
     return structure, labels
 
-def get_productions(tree):
-    return [str(p) for p in tree.productions()]
 
 def print_subtree_structures(tree):
     # this is a demo of how we can get all
@@ -224,28 +241,29 @@ for i in range(0, 25):
             for x in range (0, num_sentences):
                 parsed_sent = ptb.parsed_sents(file_name)[x]
                 
-                #feature_dict = {}
+                feature_dict = {}
                 
                 no_internal_labels = without_internal_labels(parsed_sent)
                 height = get_height(parsed_sent)
-                productions_list = get_productions(parsed_sent)
-                productions_str = " | ".join(productions_list)
-                #left, right = get_tilt(parsed_sent)
+                get_productions(parsed_sent) # by running will add them to feature_dict
+                get_subtrees(parsed_sent) #same as get_productions()
+                #length = get_sentence_length(parsed_sent)
+                #tilt = get_tilt(parsed_sent)
                 #subtrees_list = parsed_sent.subtrees()
                 #subtrees_str = " | ".join(subtrees_list)
                 
-                """
+                
                 feature_dict['without_internal_labels'] = no_internal_labels
                 feature_dict['height'] = height
-                feature_dict['productions'] = productions
+                #feature_dict['productions'] = productions
                 #feature_dict['tilt'] = (left, right)
-                feature_dict['subtrees'] = subtrees
-                """                
+                #feature_dict['subtrees'] = subtrees
+                
                 
                 #yes_internal_labels = with_internal_labels(parsed_sent)
                 
-                feature_set += [({'without_internal_labels': no_internal_labels, 'height': height, 'productions': productions_str}, genre)]
-                #feature_set += [(feature_dict, genre)]
+                #feature_set += [({'without_internal_labels': no_internal_labels, 'height': height, 'productions': productions, 'length': length}, genre)]
+                feature_set += [(feature_dict, genre)]
                 
         except Exception as e:
             print("Error adding ", file_name, " to feature vector")
@@ -291,18 +309,19 @@ for i in range(len(brown_subdirs)):
         try:
             for x in range (0, num_sentences):
                 
+                """
                 parsed_sent = ptb.parsed_sents(file_name)[x]
                 no_internal_labels = without_internal_labels(parsed_sent)
                 height = get_height(parsed_sent)
-                productions_list = get_productions(parsed_sent)
-                productions_str = " | ".join(productions_list)
+                productions = get_productions(parsed_sent)
+                length = get_sentence_length(parsed_sent)
                 #left, right = get_tilt(parsed_sent)
                 #subtrees_list = parsed_sent.subtrees()
                 #subtrees_str = " | ".join(subtrees_list)
                 #yes_internal_labels = with_internal_labels(parsed_sent)
         
                 
-                feature_set += [({'without_internal_labels': no_internal_labels, 'height': height, 'productions': productions_str}, genre)]
+                feature_set += [({'without_internal_labels': no_internal_labels, 'height': height, 'productions': productions, 'length': length}, genre)]
                 #feature_set += [({'without_internal_labels': no_internal_labels, 'height': height}, genre)]
                 
                 # new way with more features
@@ -313,21 +332,22 @@ for i in range(len(brown_subdirs)):
                 
                 no_internal_labels = without_internal_labels(parsed_sent)
                 height = get_height(parsed_sent)
-                productions = parsed_sent.productions()
+                get_productions(parsed_sent)
+                get_subtrees(parsed_sent) #same as get_productions()
                 #left, right = get_tilt(parsed_sent)
-                subtrees = parsed_sent.subtrees()
+                #subtrees = parsed_sent.subtrees()
                 
                 feature_dict['without_internal_labels'] = no_internal_labels
                 feature_dict['height'] = height
-                feature_dict['productions'] = productions
+                #feature_dict['productions'] = productions
                 #feature_dict['tilt'] = (left, right)
-                feature_dict['subtrees'] = subtrees
+                #feature_dict['subtrees'] = subtrees
                 
                 
                 #yes_internal_labels = with_internal_labels(parsed_sent)
                 
                 feature_set += [(feature_dict, genre)]
-                """
+
                 
         except Exception as e:
             print("Error adding ", file_name, " to feature vector")
@@ -340,7 +360,12 @@ random.shuffle(feature_set)
 train_set, test_set = feature_set[:12121], feature_set[12121:]
 
 print("Beginning classification...")
-classifier = nltk.NaiveBayesClassifier.train(train_set)
+naiveBayes_classifier = nltk.NaiveBayesClassifier.train(train_set)
+maxEnt_classifier = nltk.MaxentClassifier.train(train_set)
 
-print("Naive Bayes accuracy: ", nltk.classify.accuracy(classifier, test_set))
-classifier.show_most_informative_features(20)
+print("Naive Bayes accuracy: ", nltk.classify.accuracy(naiveBayes_classifier, test_set))
+naiveBayes_classifier.show_most_informative_features(20)
+
+print("Maxent accuracy: ", nltk.classify.accuracy(maxEnt_classifier, test_set))
+maxEnt_classifier.show_most_informative_features(20)
+
