@@ -12,8 +12,8 @@ from nltk.corpus import ptb
 from typing import Tuple, List
 import os, random
 from nltk.classify import apply_features
-#from nltk.classify.scikitlearn import SklearnClassifier
-#from sklearn.naive_bayes import MultinomialNB, BernoulliNB
+from nltk.classify.scikitlearn import SklearnClassifier
+from sklearn.naive_bayes import MultinomialNB
 #from sklearn.linear_model import LogisticRegression, SGDClassifier
 
 
@@ -196,8 +196,10 @@ def get_tilt(tree):
 # get genre of each file
 print("Getting genre for each file...")
 fin = open('/Users/morischick//nltk_data/corpora/ptb/allcats.txt').readlines()
-genre_dict = {}
-feature_set = []
+genreCount = {'news': 0, 'lore': 0, 'belles_lettres': 0, 'fiction': 0, 'mystery': 0, 'science_fiction': 0, 'adventure': 0, 'romance': 0, 'humor': 0}   
+# genreCount --> key: genre,        value: count of how many seen (should stop at 881)
+genre_dict = {}   # key: file_name,    value: genre
+feature_set = []  # list of tuples (feature_set, genre) where feature_set is the feature vector for each sentence
 
 for line in fin:
     line = line.replace("\n", "")
@@ -210,6 +212,7 @@ print("Genres loaded successfully.")
 print("Adding WSJ corpus to feature set...")
 
 # add WSJ corpus to feature set -- totally works
+# loop through each directory
 for i in range(0, 25):
     
     dir_num = str(i)
@@ -219,7 +222,8 @@ for i in range(0, 25):
     num_files_in_dir = len(os.listdir('/Users/morischick/nltk_data/corpora/ptb/WSJ/'+dir_num))
     #print(dir_num, num_files_in_dir)
     print("Beginning WSJ/", dir_num, "...")
-
+        
+    # loop through each file
     for j in range(0, num_files_in_dir):
         file_num = str(j)
         
@@ -229,7 +233,6 @@ for i in range(0, 25):
             
         try:
             file_name = 'WSJ/' + dir_num + '/WSJ_' + dir_num + file_num + '.MRG'
-            #parsed_sents = ptb.parsed_sents(file_name)[0]
             num_sentences = len(ptb.parsed_sents(file_name))
             genre = genre_dict[file_name]
             #print(file_name, i , j, num_sentences, genre)
@@ -237,37 +240,44 @@ for i in range(0, 25):
         except:
             print("This file does not exist and a genre cannot be found for it")
         
-        try:
-            for x in range (0, num_sentences):
-                parsed_sent = ptb.parsed_sents(file_name)[x]
+        if genreCount[genre] < 881:
+        
+            try:
+                # loop through each sentence
+                for x in range (0, num_sentences):
+                    
+                    if genreCount[genre] < 881:
+                        genreCount[genre] += 1
+                        parsed_sent = ptb.parsed_sents(file_name)[x]
+                    
+                        feature_dict = {}
+                    
+                        no_internal_labels = without_internal_labels(parsed_sent)
+                        height = get_height(parsed_sent)
+                        get_productions(parsed_sent) # by running will add them to feature_dict
+                        get_subtrees(parsed_sent) #same as get_productions()
+                        #length = get_sentence_length(parsed_sent)
+                        #tilt = get_tilt(parsed_sent)
+                    
+                    
+                        feature_dict['without_internal_labels'] = no_internal_labels
+                        feature_dict['height'] = height
+                        #feature_dict['tilt'] = (left, right)
+                    
+                        #yes_internal_labels = with_internal_labels(parsed_sent)
+                    
+                        #feature_set += [({'without_internal_labels': no_internal_labels, 'height': height, 'productions': productions, 'length': length}, genre)]
+                        feature_set += [(feature_dict, genre)]
+                    if genreCount[genre] >= 881:
+                        break
+                    
+            except Exception as e:
+                print("Error adding ", file_name, " to feature vector")
+                print(e)
                 
-                feature_dict = {}
-                
-                no_internal_labels = without_internal_labels(parsed_sent)
-                height = get_height(parsed_sent)
-                get_productions(parsed_sent) # by running will add them to feature_dict
-                get_subtrees(parsed_sent) #same as get_productions()
-                #length = get_sentence_length(parsed_sent)
-                #tilt = get_tilt(parsed_sent)
-                #subtrees_list = parsed_sent.subtrees()
-                #subtrees_str = " | ".join(subtrees_list)
-                
-                
-                feature_dict['without_internal_labels'] = no_internal_labels
-                feature_dict['height'] = height
-                #feature_dict['productions'] = productions
-                #feature_dict['tilt'] = (left, right)
-                #feature_dict['subtrees'] = subtrees
-                
-                
-                #yes_internal_labels = with_internal_labels(parsed_sent)
-                
-                #feature_set += [({'without_internal_labels': no_internal_labels, 'height': height, 'productions': productions, 'length': length}, genre)]
-                feature_set += [(feature_dict, genre)]
-                
-        except Exception as e:
-            print("Error adding ", file_name, " to feature vector")
-            print(e)
+        if genreCount[genre] >= 881:
+            break
+            
 
 print("WSJ corpus loaded successfully.")
 print("Adding Brown corpus to feature set...")
@@ -275,6 +285,7 @@ print("Adding Brown corpus to feature set...")
 # add BROWN corpus to feature set
 brown_subdirs = ['CF', 'CG', 'CK', 'CL', 'CM', 'CN', 'CP', 'CR']
 
+# loop through each directory
 for i in range(len(brown_subdirs)):
     
     dir_name = brown_subdirs[i]
@@ -284,15 +295,11 @@ for i in range(len(brown_subdirs)):
     needed_files_in_dir = [x for x in all_files_in_dir if x[:1] == 'C']
     #print(num_files_in_dir)
     
+    
+    # loop through each file
     # irregulars numbers because the lowest file name in any of the directories is 0004
     # and the highest file name is 998
     for file in needed_files_in_dir:
-    #for j in range(1, num_files_in_dir):
-        
-        #file_num = str(j)
-        
-        #if j < 10:
-        #    file_num = "0" + str(j)
             
         file_name = 'BROWN/' + dir_name + '/' + file
         #print(file_path)
@@ -301,63 +308,57 @@ for i in range(len(brown_subdirs)):
             num_sentences = len(ptb.parsed_sents(file_name))
             genre = genre_dict[file_name]
             genre_dict[file_name] = genre
-            print(file_name, genre)
+            #print(file_name, genre)
         
         except:
             print("This file does not exist and a genre cannot be found for it")
         
-        try:
-            for x in range (0, num_sentences):
-                
-                """
-                parsed_sent = ptb.parsed_sents(file_name)[x]
-                no_internal_labels = without_internal_labels(parsed_sent)
-                height = get_height(parsed_sent)
-                productions = get_productions(parsed_sent)
-                length = get_sentence_length(parsed_sent)
-                #left, right = get_tilt(parsed_sent)
-                #subtrees_list = parsed_sent.subtrees()
-                #subtrees_str = " | ".join(subtrees_list)
-                #yes_internal_labels = with_internal_labels(parsed_sent)
+        if genreCount[genre] < 881:
+            
+            try:
+                # loop through each sentence
+                for x in range (0, num_sentences):
+                    
+                    if genreCount[genre] < 881:
+                        genreCount[genre] += 1
+                        parsed_sent = ptb.parsed_sents(file_name)[x]
+                        
+                        feature_dict = {}
+                        
+                        no_internal_labels = without_internal_labels(parsed_sent)
+                        height = get_height(parsed_sent)
+                        get_productions(parsed_sent)
+                        get_subtrees(parsed_sent) #same as get_productions()
+                        #left, right = get_tilt(parsed_sent)
+                        
+                        feature_dict['without_internal_labels'] = no_internal_labels
+                        feature_dict['height'] = height
+                        #feature_dict['tilt'] = (left, right)
+                        
+                        #yes_internal_labels = with_internal_labels(parsed_sent)
+                        
+                        feature_set += [(feature_dict, genre)]
+                        
+                    if genreCount[genre] >= 881:
+                        break
+    
+                    
+            except Exception as e:
+                print("Error adding ", file_name, " to feature vector")
+                print(e)
         
-                
-                feature_set += [({'without_internal_labels': no_internal_labels, 'height': height, 'productions': productions, 'length': length}, genre)]
-                #feature_set += [({'without_internal_labels': no_internal_labels, 'height': height}, genre)]
-                
-                # new way with more features
-                """
-                parsed_sent = ptb.parsed_sents(file_name)[x]
-                
-                feature_dict = {}
-                
-                no_internal_labels = without_internal_labels(parsed_sent)
-                height = get_height(parsed_sent)
-                get_productions(parsed_sent)
-                get_subtrees(parsed_sent) #same as get_productions()
-                #left, right = get_tilt(parsed_sent)
-                #subtrees = parsed_sent.subtrees()
-                
-                feature_dict['without_internal_labels'] = no_internal_labels
-                feature_dict['height'] = height
-                #feature_dict['productions'] = productions
-                #feature_dict['tilt'] = (left, right)
-                #feature_dict['subtrees'] = subtrees
-                
-                
-                #yes_internal_labels = with_internal_labels(parsed_sent)
-                
-                feature_set += [(feature_dict, genre)]
+        if genreCount[genre] >= 881:
+            break
 
-                
-        except Exception as e:
-            print("Error adding ", file_name, " to feature vector")
-            print(e)
 
 
 print("Brown corpus loaded successfully.")
 
+print("Genre Count Dictionary:", genreCount)
+
+
 random.shuffle(feature_set)
-train_set, test_set = feature_set[:12121], feature_set[12121:]
+train_set, test_set = feature_set[:3964], feature_set[3964:]
 
 print("Beginning classification...")
 naiveBayes_classifier = nltk.NaiveBayesClassifier.train(train_set)
@@ -369,3 +370,6 @@ naiveBayes_classifier.show_most_informative_features(20)
 print("Maxent accuracy: ", nltk.classify.accuracy(maxEnt_classifier, test_set))
 maxEnt_classifier.show_most_informative_features(20)
 
+MNB_clf = SklearnClassifier(MultinomialNB())
+MNB_clf.train(train_set)
+print("MultinomialNB accuracy percent:",nltk.classify.accuracy(MNB_clf, test_set))
