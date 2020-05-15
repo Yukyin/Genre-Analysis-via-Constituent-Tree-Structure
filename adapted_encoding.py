@@ -12,6 +12,7 @@ from nltk.corpus import ptb
 from typing import Tuple, List
 import os, random
 from nltk.classify import apply_features
+from nltk.classify import ClassifierI
 from nltk.classify.scikitlearn import SklearnClassifier
 from sklearn.naive_bayes import MultinomialNB
 #from sklearn.linear_model import LogisticRegression, SGDClassifier
@@ -200,6 +201,7 @@ genreCount = {'news': 0, 'lore': 0, 'belles_lettres': 0, 'fiction': 0, 'mystery'
 # genreCount --> key: genre,        value: count of how many seen (should stop at 881)
 genre_dict = {}   # key: file_name,    value: genre
 feature_set = []  # list of tuples (feature_set, genre) where feature_set is the feature vector for each sentence
+NUM_EXAMPLES = 881
 
 for line in fin:
     line = line.replace("\n", "")
@@ -240,13 +242,13 @@ for i in range(0, 25):
         except:
             print("This file does not exist and a genre cannot be found for it")
         
-        if genreCount[genre] < 881:
+        if genreCount[genre] < NUM_EXAMPLES:
         
             try:
                 # loop through each sentence
                 for x in range (0, num_sentences):
                     
-                    if genreCount[genre] < 881:
+                    if genreCount[genre] < NUM_EXAMPLES:
                         genreCount[genre] += 1
                         parsed_sent = ptb.parsed_sents(file_name)[x]
                     
@@ -268,14 +270,14 @@ for i in range(0, 25):
                     
                         #feature_set += [({'without_internal_labels': no_internal_labels, 'height': height, 'productions': productions, 'length': length}, genre)]
                         feature_set += [(feature_dict, genre)]
-                    if genreCount[genre] >= 881:
+                    if genreCount[genre] >= NUM_EXAMPLES:
                         break
                     
             except Exception as e:
                 print("Error adding ", file_name, " to feature vector")
                 print(e)
                 
-        if genreCount[genre] >= 881:
+        if genreCount[genre] >= NUM_EXAMPLES:
             break
             
 
@@ -313,13 +315,13 @@ for i in range(len(brown_subdirs)):
         except:
             print("This file does not exist and a genre cannot be found for it")
         
-        if genreCount[genre] < 881:
+        if genreCount[genre] < NUM_EXAMPLES:
             
             try:
                 # loop through each sentence
                 for x in range (0, num_sentences):
                     
-                    if genreCount[genre] < 881:
+                    if genreCount[genre] < NUM_EXAMPLES:
                         genreCount[genre] += 1
                         parsed_sent = ptb.parsed_sents(file_name)[x]
                         
@@ -339,7 +341,7 @@ for i in range(len(brown_subdirs)):
                         
                         feature_set += [(feature_dict, genre)]
                         
-                    if genreCount[genre] >= 881:
+                    if genreCount[genre] >= NUM_EXAMPLES:
                         break
     
                     
@@ -347,7 +349,7 @@ for i in range(len(brown_subdirs)):
                 print("Error adding ", file_name, " to feature vector")
                 print(e)
         
-        if genreCount[genre] >= 881:
+        if genreCount[genre] >= NUM_EXAMPLES:
             break
 
 
@@ -358,11 +360,27 @@ print("Genre Count Dictionary:", genreCount)
 
 
 random.shuffle(feature_set)
-train_set, test_set = feature_set[:3964], feature_set[3964:]
+size = len(feature_set)
+train_set, test_set = feature_set[:int(size*0.9)], feature_set[int(size*0.9):]
+practice_set = [vector[0] for vector in test_set] # no genre tags, just feature vectors
 
 print("Beginning classification...")
 naiveBayes_classifier = nltk.NaiveBayesClassifier.train(train_set)
 maxEnt_classifier = nltk.MaxentClassifier.train(train_set)
+sorted(naiveBayes_classifier.labels())      # could have used either classifier since both have the same labels
+
+naiveBayes_classifier.prob_classify_many(practice_set)
+naiveBayes_classifier.classify_many(practice_set)
+for pdist in naiveBayes_classifier.prob_classify_many(practice_set):
+    print('%.4f %.4f %.4f %.4f%.4f %.4f %.4f %.4f %.4f' % (pdist.prob('humor'), 
+                                                           pdist.prob('news'), 
+                                                           pdist.prob('lore'), 
+                                                           pdist.prob('belles_lettres'), 
+                                                           pdist.prob('fiction'), 
+                                                           pdist.prob('mystery'), 
+                                                           pdist.prob('science_fiction'), 
+                                                           pdist.prob('adventure'), 
+                                                           pdist.prob('romance')))
 
 print("Naive Bayes accuracy: ", nltk.classify.accuracy(naiveBayes_classifier, test_set))
 naiveBayes_classifier.show_most_informative_features(20)
@@ -373,3 +391,50 @@ maxEnt_classifier.show_most_informative_features(20)
 MNB_clf = SklearnClassifier(MultinomialNB())
 MNB_clf.train(train_set)
 print("MultinomialNB accuracy percent:",nltk.classify.accuracy(MNB_clf, test_set))
+
+
+"""
+# how many unique productions are there?
+# how many unique subtree shapes are there?
+
+all_productions = list(all_productions)
+​
+pToi = {p:i for i, p in enumerate(all_productions)}
+def feature_dict_to_vector(d):
+    X = [None] * len(all_productions)
+    for i, p in enumerate(all_productions):
+        if p in d:
+            X[i] = d[p]
+        else:
+            X[i] = 0
+    return X
+​
+all_genres = [k for k in genreCount.keys()]
+gToI = {g:i for i, g in enumerate(all_genres)}
+​
+def label_to_int(label):
+    return gToI[label]
+​
+X = [feature_dict_to_vector(d) for d, label in train_set]
+y = [label_to_int(label) for d, label in train_set]
+X_test = [feature_dict_to_vector(d) for d, label in test_set]
+y_test = [label_to_int(label) for d, label in test_set]
+​
+MNB_clf = MultinomialNB()
+MNB_clf.fit(X, y)
+y_pred = MNB_clf.predict(X_test)
+from sklearn import metrics
+# Model Accuracy, how often is the classifier correct?
+print("Accuracy:",metrics.accuracy_score(y_test, y_pred))
+​
+regression_classifier = LogisticRegression(random_state=0)
+regression_classifier.fit(X, y)
+y_pred = regression_classifier.predict(X_test)
+print("Accuracy:",metrics.accuracy_score(y_test, y_pred))
+​
+from sklearn.tree import DecisionTreeClassifier
+clf = DecisionTreeClassifier(random_state=0)
+clf.fit(X, y)
+y_pred = clf.predict(X_test)
+print("Accuracy:",metrics.accuracy_score(y_test, y_pred))
+"""
