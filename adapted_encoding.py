@@ -11,8 +11,8 @@ from nltk.corpus import treebank
 from nltk.corpus import ptb
 from typing import Tuple, List
 import os, random
+import pickle
 from nltk.classify import apply_features
-from nltk.classify import ClassifierI
 from nltk.classify.scikitlearn import SklearnClassifier
 from sklearn.naive_bayes import MultinomialNB
 #from sklearn.linear_model import LogisticRegression, SGDClassifier
@@ -197,6 +197,7 @@ def get_tilt(tree):
 # get genre of each file
 print("Getting genre for each file...")
 fin = open('/Users/morischick//nltk_data/corpora/ptb/allcats.txt').readlines()
+all_genres = ['news', 'lore', 'belles_lettres', 'fiction', 'mystery', 'science_fiction', 'adventure', 'romance', 'humor']
 genreCount = {'news': 0, 'lore': 0, 'belles_lettres': 0, 'fiction': 0, 'mystery': 0, 'science_fiction': 0, 'adventure': 0, 'romance': 0, 'humor': 0}   
 # genreCount --> key: genre,        value: count of how many seen (should stop at 881)
 genre_dict = {}   # key: file_name,    value: genre
@@ -353,26 +354,171 @@ for i in range(len(brown_subdirs)):
             break
 
 
+# open a file, where you want to store the data
+pickled_feature_set = open('pickled_feature_set', 'wb')
+
+# dump information to that file
+pickle.dump(feature_set, pickled_feature_set)
+
+# close the file
+pickled_feature_set.close()
+
 
 print("Brown corpus loaded successfully.")
 
 print("Genre Count Dictionary:", genreCount)
 
 
-random.shuffle(feature_set)
+#random.shuffle(feature_set)
 size = len(feature_set)
 train_set, test_set = feature_set[:int(size*0.9)], feature_set[int(size*0.9):]
+#train_set = feature_set    # train on full feature set
 practice_set = [vector[0] for vector in test_set] # no genre tags, just feature vectors
 
+# get feature vectors by genre (100%)
+d_feature_set = {}
+for genre in all_genres:
+    d_feature_set[genre] = [(feature, label) for feature, label in feature_set if label == genre]
+    
+size = len(d_feature_set['news']) # 881
+
+# what we will use as the training set (90%)
+training = []
+for genre in all_genres:
+    training.extend(d_feature_set[genre][:int(size * 0.9)])
+    
+random.shuffle(training)
+
+# dictionary with remaining 10% within each genre stored by genre
+d_testing = {}
+for genre in all_genres:
+    d_testing[genre] = d_feature_set[genre][int(size * 0.9):]
+    
+
+all_testing             = []      # has feature and label
+humor_testing           = []      # the rest just have the feature (know label from array name)
+news_testing            = []
+lore_testing            = []
+belles_lettres_testing  = []
+fiction_testing         = []
+mystery_testing         = []
+science_fiction_testing = []
+adventure_testing       = []
+romance_testing         = []
+
+for genre in d_testing:
+    for feature, label in d_testing[genre]:
+        all_testing.append((feature, label))
+        if genre == 'humor':
+            humor_testing.append(feature)
+        if genre == 'news':
+            news_testing.append(feature)
+        if genre == 'lore':
+            lore_testing.append(feature)
+        if genre == 'belles_lettres':
+            belles_lettres_testing.append(feature)
+        if genre == 'fiction':
+            fiction_testing.append(feature)
+        if genre == 'mystery':
+            mystery_testing.append(feature)
+        if genre == 'science_fiction':
+            science_fiction_testing.append(feature)
+        if genre == 'adventure':
+            adventure_testing.append(feature)
+        if genre == 'romance':
+            romance_testing.append(feature)  
+
 print("Beginning classification...")
-naiveBayes_classifier = nltk.NaiveBayesClassifier.train(train_set)
-maxEnt_classifier = nltk.MaxentClassifier.train(train_set)
+naiveBayes_classifier = nltk.NaiveBayesClassifier.train(training)
+maxEnt_classifier = nltk.MaxentClassifier.train(training)
+"""
+# open a file, where you ant to store the data
+file = open('important', 'wb')
+
+# dump information to that file
+pickle.dump(data, file)
+
+# close the file
+file.close()
+"""
+
+pickled_naiveBayes_classifier = open('pickled_naiveBayes_classifier', 'wb')
+pickle.dump(naiveBayes_classifier, pickled_naiveBayes_classifier)
+pickled_naiveBayes_classifier.close()
+
+pickled_maxEnt_classifier = open('pickled_maxEnt_classifier', 'wb')
+pickle.dump(maxEnt_classifier, pickled_maxEnt_classifier)
+pickled_maxEnt_classifier.close()
+
 sorted(naiveBayes_classifier.labels())      # could have used either classifier since both have the same labels
 
 naiveBayes_classifier.prob_classify_many(practice_set)
+
+humor_pdist           = naiveBayes_classifier.prob_classify_many(humor_testing)
+news_pdist            = naiveBayes_classifier.prob_classify_many(news_testing)
+lore_pdist            = naiveBayes_classifier.prob_classify_many(lore_testing)
+belles_lettres_pdist  = naiveBayes_classifier.prob_classify_many(belles_lettres_testing)
+fiction_pdist         = naiveBayes_classifier.prob_classify_many(fiction_testing)
+mystery_pdist         = naiveBayes_classifier.prob_classify_many(mystery_testing)
+science_fiction_pdist = naiveBayes_classifier.prob_classify_many(science_fiction_testing)
+adventure_pdist       = naiveBayes_classifier.prob_classify_many(adventure_testing)
+romance_pdist         = naiveBayes_classifier.prob_classify_many(romance_testing)
+
+pdist_arr = [(humor_pdist, 'humor'), 
+             (news_pdist, 'news'), 
+             (lore_pdist, 'lore'),
+             (belles_lettres_pdist, 'belles_lettres'),
+             (fiction_pdist, 'fiction'),
+             (mystery_pdist, 'mystery'),
+             (science_fiction_pdist, 'science_fiction'),
+             (adventure_pdist, 'adventure'),
+             (romance_pdist, 'romance')]
+
+for genre_pdist, genre in pdist_arr:
+    for i in range(0, len(genre_pdist), 5):
+        # take 5 consecutive sentences and take product of their probabilities for each genre and
+        # see if they match the assumed one (here its humor)
+        try:
+            first = humor_pdist[i]
+            second = humor_pdist[i+1]
+            third = humor_pdist[i+2]
+            fourth = humor_pdist[i+3]
+            fifth = humor_pdist[i+4]
+        except Exception as e:
+            print(e)
+        
+        try:
+            # tp = total probability
+            humor_tp = first.prob('humor') * second.prob('humor') * third.prob('humor') * fourth.prob('humor') * fifth.prob('humor')
+            news_tp = first.prob('news') * second.prob('news') * third.prob('news') * fourth.prob('news') * fifth.prob('news')
+            lore_tp = first.prob('lore') * second.prob('lore') * third.prob('lore') * fourth.prob('lore') * fifth.prob('lore')
+            belles_lettres_tp = first.prob('belles_lettres') * second.prob('belles_lettres') * third.prob('belles_lettres') * fourth.prob('belles_lettres') * fifth.prob('belles_lettres')
+            fiction_tp = first.prob('fiction') * second.prob('fiction') * third.prob('fiction') * fourth.prob('fiction') * fifth.prob('fiction')
+            mystery_tp = first.prob('mystery') * second.prob('mystery') * third.prob('mystery') * fourth.prob('mystery') * fifth.prob('mystery')
+            science_fiction_tp = first.prob('science_fiction') * second.prob('science_fiction') * third.prob('science_fiction') * fourth.prob('science_fiction') * fifth.prob('science_fiction')
+            adventure_tp = first.prob('adventure') * second.prob('adventure') * third.prob('adventure') * fourth.prob('adventure') * fifth.prob('adventure')
+            romance_tp = first.prob('romance') * second.prob('romance') * third.prob('romance') * fourth.prob('romance') * fifth.prob('romance')
+            
+            all_probs = {'humor_tp': humor_tp,
+                         'news_tp': news_tp, 
+                         'lore_tp': lore_tp, 
+                         'belles_lettres_tp': belles_lettres_tp,
+                         'fiction_tp': fiction_tp,
+                         'mystery_tp': mystery_tp,
+                         'science_fiction_tp': science_fiction_tp,
+                         'adventure_tp': adventure_tp,
+                         'romance_tp': romance_tp}
+            max_prob = max(all_probs, key=all_probs.get)
+            #print(max_prob)
+            actual_genre_prob = genre + '_tp'
+            #print(max_prob)
+            print(actual_genre_prob, ": ", all_probs[actual_genre_prob], max_prob, ": ", all_probs[max_prob])
+        except Exception as e:
+            print(e)
+
 naiveBayes_classifier.classify_many(practice_set)
 for pdist in naiveBayes_classifier.prob_classify_many(practice_set):
-    print('%.4f %.4f %.4f %.4f%.4f %.4f %.4f %.4f %.4f' % (pdist.prob('humor'), 
+    print('%.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f' % (pdist.prob('humor'), 
                                                            pdist.prob('news'), 
                                                            pdist.prob('lore'), 
                                                            pdist.prob('belles_lettres'), 
