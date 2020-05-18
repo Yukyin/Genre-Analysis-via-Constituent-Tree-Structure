@@ -54,24 +54,6 @@ def without_internal_labels(parsed_sents):
             encoding += "0 "
     return encoding
 
-def get_productionsOLD(parsed_sent):
-    d = {}
-    for p in parsed_sent.productions():
-        right_side = p.rhs()
-        # if a production leads to more than 1 node, it must not be a terminal
-        # if a production has 1 node it must be a terminal
-        # we will only include non-terminal productions
-        if len(right_side) > 1:
-            #print(right_side, len(right_side))
-            #parts = str(p).split('->')
-            #print(parts)
-            if str(p) in d:
-                d[str(p)] += 1
-            else:
-                d[str(p)] = 1
-    productions = ", ".join(d)
-    return productions
-
 def get_productions(parsed_sent):
     d = {}
     for p in parsed_sent.productions():
@@ -103,9 +85,6 @@ def get_subtrees(parsed_sent):
             subtree_dict[encoding] = 1
     for key in subtree_dict.keys():
         feature_dict[key] = subtree_dict[key]
-
-#with_internal_labels(parsed_sents)
-#without_internal_labels(parsed_sents)
 
 
 # below is from Professor Waxman
@@ -214,165 +193,174 @@ for line in fin:
 print("Genres loaded successfully.")
 print("Adding WSJ corpus to feature set...")
 
-# add WSJ corpus to feature set -- totally works
-# loop through each directory
-for i in range(0, 25):
-    
-    dir_num = str(i)
-    if i < 10:
-        dir_num = "0" + str(i)
+try:
+    pickled_feature_set = open('pickled_feature_set', 'rb')
+    feature_set = pickle.load(pickled_feature_set)
+    pickled_feature_set.close()
+except Exception as e:
+    print(e)
 
-    num_files_in_dir = len(os.listdir('/Users/morischick/nltk_data/corpora/ptb/WSJ/'+dir_num))
-    #print(dir_num, num_files_in_dir)
-    print("Beginning WSJ/", dir_num, "...")
+if len(feature_set) != 0:     # aka was previously created and then unpickled
+    pass
+else:                         # does not exist and must be created
+    # add WSJ corpus to feature set -- totally works
+    # loop through each directory
+    for i in range(0, 25):
         
-    # loop through each file
-    for j in range(0, num_files_in_dir):
-        file_num = str(j)
-        
-        if j < 10:
-            file_num = "0" + str(j)
-        
+        dir_num = str(i)
+        if i < 10:
+            dir_num = "0" + str(i)
+    
+        num_files_in_dir = len(os.listdir('/Users/morischick/nltk_data/corpora/ptb/WSJ/'+dir_num))
+        #print(dir_num, num_files_in_dir)
+        print("Beginning WSJ/", dir_num, "...")
             
-        try:
-            file_name = 'WSJ/' + dir_num + '/WSJ_' + dir_num + file_num + '.MRG'
-            num_sentences = len(ptb.parsed_sents(file_name))
-            genre = genre_dict[file_name]
-            #print(file_name, i , j, num_sentences, genre)
+        # loop through each file
+        for j in range(0, num_files_in_dir):
+            file_num = str(j)
             
-        except:
-            print("This file does not exist and a genre cannot be found for it")
-        
-        if genreCount[genre] < NUM_EXAMPLES:
-        
-            try:
-                # loop through each sentence
-                for x in range (0, num_sentences):
-                    
-                    if genreCount[genre] < NUM_EXAMPLES:
-                        genreCount[genre] += 1
-                        parsed_sent = ptb.parsed_sents(file_name)[x]
-                    
-                        feature_dict = {}
-                    
-                        no_internal_labels = without_internal_labels(parsed_sent)
-                        height = get_height(parsed_sent)
-                        get_productions(parsed_sent) # by running will add them to feature_dict
-                        get_subtrees(parsed_sent) #same as get_productions()
-                        #length = get_sentence_length(parsed_sent)
-                        #tilt = get_tilt(parsed_sent)
-                    
-                    
-                        feature_dict['without_internal_labels'] = no_internal_labels
-                        feature_dict['height'] = height
-                        #feature_dict['tilt'] = (left, right)
-                    
-                        #yes_internal_labels = with_internal_labels(parsed_sent)
-                    
-                        #feature_set += [({'without_internal_labels': no_internal_labels, 'height': height, 'productions': productions, 'length': length}, genre)]
-                        feature_set += [(feature_dict, genre)]
-                    if genreCount[genre] >= NUM_EXAMPLES:
-                        break
-                    
-            except Exception as e:
-                print("Error adding ", file_name, " to feature vector")
-                print(e)
+            if j < 10:
+                file_num = "0" + str(j)
+            
                 
-        if genreCount[genre] >= NUM_EXAMPLES:
-            break
-            
-
-print("WSJ corpus loaded successfully.")
-print("Adding Brown corpus to feature set...")
-
-# add BROWN corpus to feature set
-brown_subdirs = ['CF', 'CG', 'CK', 'CL', 'CM', 'CN', 'CP', 'CR']
-
-# loop through each directory
-for i in range(len(brown_subdirs)):
-    
-    dir_name = brown_subdirs[i]
-    print("Beginning Brown/", dir_name, "...")
-    
-    all_files_in_dir = os.listdir('/Users/morischick/nltk_data/corpora/ptb/BROWN/'+dir_name)
-    needed_files_in_dir = [x for x in all_files_in_dir if x[:1] == 'C']
-    #print(num_files_in_dir)
-    
-    
-    # loop through each file
-    # irregulars numbers because the lowest file name in any of the directories is 0004
-    # and the highest file name is 998
-    for file in needed_files_in_dir:
-            
-        file_name = 'BROWN/' + dir_name + '/' + file
-        #print(file_path)
-
-        try:
-            num_sentences = len(ptb.parsed_sents(file_name))
-            genre = genre_dict[file_name]
-            genre_dict[file_name] = genre
-            #print(file_name, genre)
-        
-        except:
-            print("This file does not exist and a genre cannot be found for it")
-        
-        if genreCount[genre] < NUM_EXAMPLES:
-            
             try:
-                # loop through each sentence
-                for x in range (0, num_sentences):
+                file_name = 'WSJ/' + dir_num + '/WSJ_' + dir_num + file_num + '.MRG'
+                num_sentences = len(ptb.parsed_sents(file_name))
+                genre = genre_dict[file_name]
+                #print(file_name, i , j, num_sentences, genre)
+                
+            except:
+                print("This file does not exist and a genre cannot be found for it")
+            
+            if genreCount[genre] < NUM_EXAMPLES:
+            
+                try:
+                    # loop through each sentence
+                    for x in range (0, num_sentences):
+                        
+                        if genreCount[genre] < NUM_EXAMPLES:
+                            genreCount[genre] += 1
+                            parsed_sent = ptb.parsed_sents(file_name)[x]
+                        
+                            feature_dict = {}
+                        
+                            no_internal_labels = without_internal_labels(parsed_sent)
+                            height = get_height(parsed_sent)
+                            get_productions(parsed_sent) # by running will add them to feature_dict
+                            get_subtrees(parsed_sent) #same as get_productions()
+                            #length = get_sentence_length(parsed_sent)
+                            #tilt = get_tilt(parsed_sent)
+                        
+                        
+                            feature_dict['without_internal_labels'] = no_internal_labels
+                            feature_dict['height'] = height
+                            #feature_dict['tilt'] = (left, right)
+                        
+                            #yes_internal_labels = with_internal_labels(parsed_sent)
+                        
+                            #feature_set += [({'without_internal_labels': no_internal_labels, 'height': height, 'productions': productions, 'length': length}, genre)]
+                            feature_set += [(feature_dict, genre)]
+                        if genreCount[genre] >= NUM_EXAMPLES:
+                            break
+                        
+                except Exception as e:
+                    print("Error adding ", file_name, " to feature vector")
+                    print(e)
                     
-                    if genreCount[genre] < NUM_EXAMPLES:
-                        genreCount[genre] += 1
-                        parsed_sent = ptb.parsed_sents(file_name)[x]
-                        
-                        feature_dict = {}
-                        
-                        no_internal_labels = without_internal_labels(parsed_sent)
-                        height = get_height(parsed_sent)
-                        get_productions(parsed_sent)
-                        get_subtrees(parsed_sent) #same as get_productions()
-                        #left, right = get_tilt(parsed_sent)
-                        
-                        feature_dict['without_internal_labels'] = no_internal_labels
-                        feature_dict['height'] = height
-                        #feature_dict['tilt'] = (left, right)
-                        
-                        #yes_internal_labels = with_internal_labels(parsed_sent)
-                        
-                        feature_set += [(feature_dict, genre)]
-                        
-                    if genreCount[genre] >= NUM_EXAMPLES:
-                        break
+            if genreCount[genre] >= NUM_EXAMPLES:
+                break
+                
     
-                    
-            except Exception as e:
-                print("Error adding ", file_name, " to feature vector")
-                print(e)
+    print("WSJ corpus loaded successfully.")
+    print("Adding Brown corpus to feature set...")
+    
+    # add BROWN corpus to feature set
+    brown_subdirs = ['CF', 'CG', 'CK', 'CL', 'CM', 'CN', 'CP', 'CR']
+    
+    # loop through each directory
+    for i in range(len(brown_subdirs)):
         
-        if genreCount[genre] >= NUM_EXAMPLES:
-            break
-
-
-# open a file, where you want to store the data
-pickled_feature_set = open('pickled_feature_set', 'wb')
-
-# dump information to that file
-pickle.dump(feature_set, pickled_feature_set)
-
-# close the file
-pickled_feature_set.close()
-
-
-print("Brown corpus loaded successfully.")
+        dir_name = brown_subdirs[i]
+        print("Beginning Brown/", dir_name, "...")
+        
+        all_files_in_dir = os.listdir('/Users/morischick/nltk_data/corpora/ptb/BROWN/'+dir_name)
+        needed_files_in_dir = [x for x in all_files_in_dir if x[:1] == 'C']
+        #print(num_files_in_dir)
+        
+        
+        # loop through each file
+        # irregulars numbers because the lowest file name in any of the directories is 0004
+        # and the highest file name is 998
+        for file in needed_files_in_dir:
+                
+            file_name = 'BROWN/' + dir_name + '/' + file
+            #print(file_path)
+    
+            try:
+                num_sentences = len(ptb.parsed_sents(file_name))
+                genre = genre_dict[file_name]
+                genre_dict[file_name] = genre
+                #print(file_name, genre)
+            
+            except:
+                print("This file does not exist and a genre cannot be found for it")
+            
+            if genreCount[genre] < NUM_EXAMPLES:
+                
+                try:
+                    # loop through each sentence
+                    for x in range (0, num_sentences):
+                        
+                        if genreCount[genre] < NUM_EXAMPLES:
+                            genreCount[genre] += 1
+                            parsed_sent = ptb.parsed_sents(file_name)[x]
+                            
+                            feature_dict = {}
+                            
+                            no_internal_labels = without_internal_labels(parsed_sent)
+                            height = get_height(parsed_sent)
+                            get_productions(parsed_sent)
+                            get_subtrees(parsed_sent) #same as get_productions()
+                            #left, right = get_tilt(parsed_sent)
+                            
+                            feature_dict['without_internal_labels'] = no_internal_labels
+                            feature_dict['height'] = height
+                            #feature_dict['tilt'] = (left, right)
+                            
+                            #yes_internal_labels = with_internal_labels(parsed_sent)
+                            
+                            feature_set += [(feature_dict, genre)]
+                            
+                        if genreCount[genre] >= NUM_EXAMPLES:
+                            break
+        
+                        
+                except Exception as e:
+                    print("Error adding ", file_name, " to feature vector")
+                    print(e)
+            
+            if genreCount[genre] >= NUM_EXAMPLES:
+                break
+    
+    # was not previously pickled, so we will pickle it now
+    # open a file, where you want to store the data
+    pickled_feature_set = open('pickled_feature_set', 'wb')
+    
+    # dump information to that file
+    pickle.dump(feature_set, pickled_feature_set)
+    
+    # close the file
+    pickled_feature_set.close()
+    
+    
+    print("Brown corpus loaded successfully.")
 
 print("Genre Count Dictionary:", genreCount)
 
 
-#random.shuffle(feature_set)
+random.shuffle(feature_set)
 size = len(feature_set)
 train_set, test_set = feature_set[:int(size*0.9)], feature_set[int(size*0.9):]
-#train_set = feature_set    # train on full feature set
 practice_set = [vector[0] for vector in test_set] # no genre tags, just feature vectors
 
 # get feature vectors by genre (100%)
@@ -391,8 +379,10 @@ random.shuffle(training)
 
 # dictionary with remaining 10% within each genre stored by genre
 d_testing = {}
+testing = []
 for genre in all_genres:
     d_testing[genre] = d_feature_set[genre][int(size * 0.9):]
+    testing.extend(d_feature_set[genre][int(size * 0.9):])
     
 
 all_testing             = []      # has feature and label
@@ -431,16 +421,6 @@ for genre in d_testing:
 print("Beginning classification...")
 naiveBayes_classifier = nltk.NaiveBayesClassifier.train(training)
 maxEnt_classifier = nltk.MaxentClassifier.train(training)
-"""
-# open a file, where you ant to store the data
-file = open('important', 'wb')
-
-# dump information to that file
-pickle.dump(data, file)
-
-# close the file
-file.close()
-"""
 
 pickled_naiveBayes_classifier = open('pickled_naiveBayes_classifier', 'wb')
 pickle.dump(naiveBayes_classifier, pickled_naiveBayes_classifier)
@@ -452,7 +432,7 @@ pickled_maxEnt_classifier.close()
 
 sorted(naiveBayes_classifier.labels())      # could have used either classifier since both have the same labels
 
-naiveBayes_classifier.prob_classify_many(practice_set)
+#naiveBayes_classifier.prob_classify_many(practice_set)
 
 humor_pdist           = naiveBayes_classifier.prob_classify_many(humor_testing)
 news_pdist            = naiveBayes_classifier.prob_classify_many(news_testing)
@@ -511,7 +491,6 @@ for genre_pdist, genre in pdist_arr:
             max_prob = max(all_probs, key=all_probs.get)
             #print(max_prob)
             actual_genre_prob = genre + '_tp'
-            #print(max_prob)
             print(actual_genre_prob, ": ", all_probs[actual_genre_prob], max_prob, ": ", all_probs[max_prob])
         except Exception as e:
             print(e)
@@ -528,7 +507,7 @@ for pdist in naiveBayes_classifier.prob_classify_many(practice_set):
                                                            pdist.prob('adventure'), 
                                                            pdist.prob('romance')))
 
-print("Naive Bayes accuracy: ", nltk.classify.accuracy(naiveBayes_classifier, test_set))
+print("Naive Bayes accuracy: ", nltk.classify.accuracy(naiveBayes_classifier, testing))
 naiveBayes_classifier.show_most_informative_features(20)
 
 print("Maxent accuracy: ", nltk.classify.accuracy(maxEnt_classifier, test_set))
