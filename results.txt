@@ -1,0 +1,44 @@
+Naive Bayes accuracy:  0.8426966292134831
+Most Informative Features
+         NP -> QP -NONE- = 1                news : fictio =     34.3 : 1.0
+            VP -> VBD PP = 1              fictio : news   =     33.7 : 1.0
+          VP -> VBZ SBAR = 1                news : romanc =     32.3 : 1.0
+          VP -> VB NP PP = 1              belles : news   =     27.4 : 1.0
+       NP -> NNP NNP NNP = 1                news : scienc =     26.3 : 1.0
+         PP-LOC -> IN NP = 2                news : belles =     23.0 : 1.0
+     NP-SBJ -> NP , NP , = 1                news : humor  =     23.0 : 1.0
+            VP -> VBZ VP = 1                news : advent =     21.4 : 1.0
+             VP -> VBZ S = 1                news : fictio =     21.0 : 1.0
+         PP-MNR -> IN NP = 1                news : myster =     20.3 : 1.0
+          VP -> VBP SBAR = 1                news : advent =     20.3 : 1.0
+        NP -> DT NNP NNP = 1                lore : advent =     19.8 : 1.0
+           NP -> NNP NNP = 2                news : scienc =     19.0 : 1.0
+       NP -> NNP NNP POS = 1                news : lore   =     19.0 : 1.0
+     NP-SBJ-1 -> NNP NNP = 1                news : scienc =     17.7 : 1.0
+   S -> PP , NP-SBJ VP . = 1              belles : myster =     17.0 : 1.0
+              PP -> IN S = 1              scienc : humor  =     17.0 : 1.0
+        VP -> VBD PP-DIR = 1              advent : belles =     16.3 : 1.0
+        NP-SBJ -> NN NNS = 1                news : humor  =     16.3 : 1.0
+       NP-SBJ -> NP , NP = 1                news : fictio =     16.3 : 1.0
+       
+Maxent accuracy:  0.8963795255930087
+  10.464 NP-HLN -> NNP NNP :==1 and label is 'news'
+   9.927 NP -> NNP :==1 and label is 'news'
+   9.549 NP -> DT JJ NN .==1 and label is 'belles_lettres'
+   9.303 NP -> NN : IN NN .==1 and label is 'news'
+   9.178 INTJ -> INTJ , NP-VOC .==1 and label is 'science_fiction'
+   9.170 S -> ('*', '-NONE-') ('Done', 'VBN') ('*-1', '-NONE-') ('by', 'IN') ('a', 'DT') ('professional', 'JJ') ('decorator', 'NN') (',', ',') ('Madden', 'NNP') ('thought', 'VBD') ('0', '-NONE-') ('*T*-2', '-NONE-') (',', ',') ('and', 'CC') ('somehow', 'RB') ('as', 'RB') ('impersonal', 'JJ') (',', ',') ('as', 'RB') ('unremarkable', 'JJ') ('as', 'IN') ('its', 'PRP$') ('occupant', 'NN') ('.', '.')==1 and label is 'mystery'
+   9.170 S -> ('It-wit', 'NN') ('is', 'VBZ') ('a', 'DT') ('misnomer', 'NN') ('because', 'IN') ('it', 'PRP') ('covers', 'VBZ') ('slips', 'NNS') ('as', 'RB') ('well', 'RB') ('as', 'IN') ('wit', 'NN') ('.', '.')==1 and label is 'humor'
+   8.652 NP -> NN LS .==1 and label is 'lore'
+   8.332 NP -> `` NN .==1 and label is 'romance'
+   8.263 SQ -> VBD NP-SBJ ADVP-LOC-PRD==1 and label is 'humor'
+   8.145 S -> ('Nothing', 'NNP') ('at', 'IN') ('all', 'DT') ("''", "''") (',', ',') ('he', 'PRP') ('said', 'VBD') ('quietly', 'RB') ('*T*-1', '-NONE-') ('.', '.')==1 and label is 'romance'
+   8.145 S -> ('``', '``') ('Uhhu', 'UH') ("''", "''") ('.', '.')==1 and label is 'romance'
+   8.093 ADVP -> `` RB RB .==1 and label is 'news'
+   8.093 NP -> NNP NNP NNP :==1 and label is 'news'
+   8.046 without_internal_labels=='0 0 1 0 1 0 1 ' and label is 'lore'
+   8.017 ADVP-MNR -> RB .==1 and label is 'mystery'
+   8.017 ADJP -> JJ .==1 and label is 'mystery'
+   8.017 S -> `` NP-SBJ VP :==1 and label is 'news'
+   7.942 INTJ -> UH '' . .==1 and label is 'humor'
+   7.942 ADJP -> JJ '' . .==1 and label is 'humor'
